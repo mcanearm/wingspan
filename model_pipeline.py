@@ -27,25 +27,25 @@ data_transformer = ColumnTransformer(
                 "tucked_cards_pct",
                 "nectar_pct",
                 "duet_tokens_pct",
-                "winner"
+                "winner",
             ],
         ),
     ]
 )
 
-preprocessor = Pipeline([
-    ("data_transformer", data_transformer),
-    ("converter", FunctionTransformer(lambda x: jnp.array(x), validate=False)),
-])
+preprocessor = Pipeline(
+    [
+        ("data_transformer", data_transformer),
+        ("converter", FunctionTransformer(lambda x: jnp.array(x), validate=False)),
+    ]
+)
 
 
 if __name__ == "__main__":
-    
+
+    # add a comment here to trigger pre-commit hook
     processed_data_path = Path(__file__).parent / "processed" / "processed_scores.csv"
     processed_scores = pl.read_casv(processed_data_path)
-    
+
     # Fit and transform the data
     fit_data = preprocessor.fit_transform(processed_scores)
-
-    
-
