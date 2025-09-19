@@ -50,15 +50,54 @@ preprocessor = Pipeline(
 
 def model(expansions, players, counts):
     """
-    category_counts: array (n_players, n_categories), raw point counts
+    This is the main model for the Wingspan scoring data. It is hierarchical across
+    two dimensions (player and game expansion), but these dimensions are not nested, and
+    so the tuple of (player, expansion) is the key dimension. This gives a three
+    dimensional array of shape (n_players, n_expansions, n_categories), and we use
+    this representation to model the point distributions. Everything else after
+    the multinomial distribution is fairly standard.
+
+    The expected observation level is a (game, player) tuple. For now, the game
+    is completely ignored, but in future analyses, it could be useful to know
+    whether certain games were more competitive than others and how that affects
+    the overall strategy. But for now, we treat the (player, game) tuples
+    as interchangeable.
+
+    params:
+    expansions: array (n_obs,), ordinal encoding of expansion type
+    players: array (n_obs,), ordinal encoding of player
+    counts: array (n_obs, n_categories), raw point counts across n_obs and n_categories
+
+    returns:
+    None
     """
     N, K = counts.shape
     total = jnp.sum(counts, axis=1)
     n_players = len(np.unique(players))
-    n_expansions = len(
-        np.unique(expansions)
-    )  # there are always 4, but maybe one day...
 
+    # there are always 4, but maybe one day...
+    n_expansions = len(np.unique(expansions))
+
+    # Global base distribution across categories. We simulate the distribution
+    # of points across categories as a percentage, and separately, model the
+    # total number of points scored. The "plate" syntax repeats the sampling
+    # process within a dimension, and gives a more readable way to express
+    # hierarchical models.
+
+    # these are the global parameters
+    phi = numpyro.sample("phi", dist.Dirichlet(jnp.ones(K)))
+    point_mean = numpyro.sample("point_mean", dist.Normal(70.0, 10))
+    point_sigma = numpyro.sample("point_sigma", dist.HalfNormal(15.0))
+
+    # each category has its own concentration parameter
+    with numpyro.plate("categories", K):
+        log_eta = numpyro.sample("log_eta", dist.Normal(0.0, 1.0))
+        eta = jnp.exp(log_eta)
+
+    # Each expansion does not have the same valid point categories. For example, only
+    # the Asian expansion in two player mode has the "Duet Tokens" category. Therefore,
+    # to jointly estimate ALL expansion categories at once, we need to make the concentration
+    # of certain point categories go to zero.
     point_mask = jnp.array(
         [
             # Birds, Bonus Cards, End of Round Goals, Eggs, Food on Cards, Tucked Cards, Nectar, Duet Tokens
@@ -68,23 +107,16 @@ def model(expansions, players, counts):
             [1, 1, 1, 1, 1, 1, 1, 0],  # Oceania
         ],
     )
-
-    # global base distribution across categories
-    phi = numpyro.sample("phi", dist.Dirichlet(jnp.ones(K)))
-    point_mean = numpyro.sample("point_mean", dist.Normal(70.0, 10))
-    point_sigma = numpyro.sample("point_sigma", dist.HalfNormal(15.0))
-    with numpyro.plate("categories", K):
-        log_eta = numpyro.sample("log_eta", dist.Normal(0.0, 1.0))
-        eta = jnp.exp(log_eta)
-
     conc = eta * phi * point_mask + 0.5
+
+    # each player and expansion tuple has its own distribution of points AND point total
     with numpyro.plate("expansions", n_expansions):
         with numpyro.plate("players", n_players):
             point_lambda = numpyro.sample(
                 "points_total", dist.Normal(point_mean, point_sigma)
             )
             theta = numpyro.sample("phi_exp", dist.Dirichlet(conc))
-            numpyro.deterministic("points_category", theta * point_lambda[:, :, None])
+            numpyro.deterministic("points_category", theta * point_lambda[:, :, None])  # type: ignore
 
     point_eps = numpyro.sample("point_eps", dist.HalfNormal(5.0))
     with numpyro.plate("obs", N):
@@ -101,6 +133,13 @@ def model(expansions, players, counts):
 
 
 if __name__ == "__main__":
+    """
+    With the model specified, we can run the script to actually fit the model
+    to our data.
+    """
+
+    # assume a 4 core machine for now. Maybe not the best, but... come on.
+    # Smart fridges have at least 4 cores. And you don't need a GPU.
     numpyro.set_platform("cpu")
     numpyro.set_host_device_count(4)
 
@@ -119,7 +158,7 @@ if __name__ == "__main__":
     # use the default NUTS parameters. It worked fine, but you can tune it
     # if you want.
     kernel = NUTS(model)
-    mcmc = MCMC(kernel, num_warmup=3000, num_samples=1000, num_chains=4)
+    mcmc = MCMC(kernel, num_warmup=1000, num_samples=1000, num_chains=4)
 
     key = jax.random.key(481)
 

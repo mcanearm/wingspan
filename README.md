@@ -1,16 +1,16 @@
 # Wingspan Stat Tracker and Model Estimator
 
-I am an avid Wingspan player. My wife and I in had a tradition at a previous home that each 
-Saturday, we would rotate our couch to face outside. Directly in front of the window 
-was a magnolia tree from which we hung two birdfeeders. We would make coffee and watch chickadees, 
-tufted titmouses, cardinals, blue jays, sparrows, house finches, goldfinches, and squirrels all feed
-from our birdfeeders while we played Wingspan. 
+I am an avid Wingspan player. My wife and I had a tradition at a previous home that each 
+Saturday, we would rotate our couch to face outside. Directly in front of our living
+room window was a magnolia tree from which we hung two birdfeeders. We would make 
+coffee and watch chickadees, tufted titmouses, cardinals, blue jays, sparrows, 
+house finches, goldfinches, and squirrels all feed from our birdfeeders while we played Wingspan. 
 
 Uncontent with simply enjoying these beautiful memories, I instead decided it would
 be fun to track our scores from our games and see which strategies are optimal. Despite
 relatively simple rules, there is an incredible amount of variety and strategy to the game,
 and so given the wins and losses between the two of us (and guests at other points), we 
-can set up a simplified Bayesian to estimate which strategies are best for which expansions.
+can set up a simplified Bayesian model to estimate which strategies are best for which expansions.
 The game proceeds as follows (in broad strokes):
 
 1) You have 26 turns over the course of the game. In four rounds, you start with 8 turns, then 7, then 6, and finally 5.
@@ -34,4 +34,4 @@ maximum number of points, especially relative to the other players?"
 
 This package in particular focuses on using a Bayesian hierarchical modeling framework with simplified models
 to jointly estimate multiple parameters of interest, such as optimal winning strategy, expected point total from a
-given strategy, and overall player skill.
+given strategy, and overall player skill. 
