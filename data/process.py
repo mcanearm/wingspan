@@ -83,5 +83,5 @@ if __name__ == "__main__":
             )
         )
     )
-
-    scores.write_csv(data_dir / "processed" / "processed_scores.csv")
+    (processed_dir := data_dir / "processed").mkdir(parents=True, exist_ok=True)
+    scores.write_csv(processed_dir / "processed_scores.csv")
