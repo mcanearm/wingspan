@@ -16,11 +16,9 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import FunctionTransformer, Pipeline
 from sklearn.preprocessing import OrdinalEncoder
 
-"""
-Data preprocessing pipeline for the model. The main goal is to convert 
-categorical variables, to ordinal ones, otherwise we're leaving everything alone. 
-Also convert to use JAX arrays instead of numpy arrays.
-"""
+# Data preprocessing pipeline for the model. The main goal is to convert
+# categorical variables to ordinal ones; otherwise, we're leaving everything alone.
+# Also convert to use JAX arrays instead of numpy arrays.
 # the columns are pretty much set in stone for better or worse.
 data_transformer = ColumnTransformer(
     [
@@ -106,29 +104,37 @@ if __name__ == "__main__":
     numpyro.set_platform("cpu")
     numpyro.set_host_device_count(4)
 
-    processedData = (
+    processed_data = (
         Path(__file__).parent.resolve() / "data" / "processed" / "processed_scores.csv"
     )
     try:
-        processedData = pl.read_csv(processedData)
+        processed_data = pl.read_csv(processed_data)
     except FileNotFoundError:
         raise FileNotFoundError(
             "Processed data not found, please run `python data/process.py` first."
         )
 
-    fit_data = preprocessor.fit_transform(processedData)
+    fit_data = preprocessor.fit_transform(processed_data)
 
+    # use the default NUTS parameters. It worked fine, but you can tune it
+    # if you want.
     kernel = NUTS(model)
     mcmc = MCMC(kernel, num_warmup=3000, num_samples=1000, num_chains=4)
 
     key = jax.random.key(481)
 
     # actually important we don't use jnp here, since that will screw
-    # up the model fitting.
+    # up the model fitting (jnp arrays have this "tracer" behavior) that means
+    # the shape needs to be known at runtime/compile time otherwise the program
+    # fails. However, use jnp for the count data, since that shape is static.
     expansions, players = np.array(fit_data[:, :2].T, dtype=jnp.int32)
     points = fit_data[:, 2:]
 
+    # Run the actual model and save the results as a NetCDF file, since the
+    # trace has arrays of varying shapes due to the hierarchical structure.
     mcmc_results = mcmc.run(key, expansions=expansions, players=players, counts=points)
+    trace = az.from_numpyro(mcmc)
+    mcmc.run(key, expansions=expansions, players=players, counts=points)
     trace = az.from_numpyro(mcmc)
     (result_dir := Path(__file__).parent.resolve() / "data" / "results").mkdir(
         parents=True, exist_ok=True
