@@ -83,7 +83,7 @@ def model(expansions, players, counts):
             point_lambda = numpyro.sample(
                 "points_total", dist.Normal(point_mean, point_sigma)
             )
-            theta = numpyro.sample("phi_exp", dist.Dirichlet(conc))
+            theta = numpyro.sample("theta", dist.Dirichlet(conc))
             numpyro.deterministic("points_category", theta * point_lambda[:, :, None])
 
     point_eps = numpyro.sample("point_eps", dist.HalfNormal(5.0))
@@ -127,15 +127,33 @@ if __name__ == "__main__":
     # up the model fitting (jnp arrays have this "tracer" behavior) that means
     # the shape needs to be known at runtime/compile time otherwise the program
     # fails. However, use jnp for the count data, since that shape is static.
-    expansions, players = np.array(fit_data[:, :2].T, dtype=jnp.int32)
+    expansion_labels, players = np.array(fit_data[:, :2].T, dtype=jnp.int32)
     points = fit_data[:, 2:]
 
     # Run the actual model and save the results as a NetCDF file, since the
     # trace has arrays of varying shapes due to the hierarchical structure.
-    mcmc_results = mcmc.run(key, expansions=expansions, players=players, counts=points)
-    trace = az.from_numpyro(mcmc)
-    mcmc.run(key, expansions=expansions, players=players, counts=points)
-    trace = az.from_numpyro(mcmc)
+    mcmc.run(key, expansions=expansion_labels, players=players, counts=points)
+
+    expansion_labels, player_names = data_transformer.transformers_[0][1].categories_
+    point_categories = [
+        cat.replace("pass__", "")
+        for cat in data_transformer.get_feature_names_out()[2:]
+    ]
+    trace = az.from_numpyro(
+        mcmc,
+        coords={
+            "players": player_names,
+            "expansions": expansion_labels,
+            "point_categories": point_categories,
+        },
+        dims={
+            "phi": ["point_categories"],
+            "point_totals": ["point_categories"],
+            "theta": ["players", "expansions", "point_categories"],
+            "points_total": ["players", "expansions"],
+            "points_category": ["players", "expansions", "point_categories"],
+        },
+    )
     (result_dir := Path(__file__).parent.resolve() / "data" / "results").mkdir(
         parents=True, exist_ok=True
     )
