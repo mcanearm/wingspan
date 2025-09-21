@@ -9,7 +9,7 @@ from pathlib import Path
 import arviz as az
 from matplotlib import pyplot as plt
 
-logLevel = os.environ.get("LOGLEVEL", "WARNING").upper()
+logLevel = os.environ.get("LOGLEVEL", "INFO").upper()
 logging.basicConfig(level=logLevel)
 logger = logging.getLogger(__name__)
 
@@ -151,3 +151,5 @@ plt.tight_layout()
 plt.savefig(figure_dir / "tucked_cards_dist.png")
 if show_figures:
     plt.show()
+
+logger.info(f"Analysis complete! All figures saved to {figure_dir}.")

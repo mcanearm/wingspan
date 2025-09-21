@@ -20,7 +20,7 @@ from sklearn.pipeline import FunctionTransformer, Pipeline
 from sklearn.preprocessing import OrdinalEncoder
 
 
-logLevel = os.environ.get("LOGLEVEL", "WARNING").upper()
+logLevel = os.environ.get("LOGLEVEL", "INFO").upper()
 logging.basicConfig(level=logLevel)
 logger = logging.getLogger(__name__)
 

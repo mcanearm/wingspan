@@ -11,7 +11,7 @@ from pathlib import Path
 import os
 
 
-logLevel = os.environ.get("LOGLEVEL", "WARNING").upper()
+logLevel = os.environ.get("LOGLEVEL", "INFO").upper()
 logging.basicConfig(level=logLevel)
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     max_score = scores.group_by("Game").agg(pl.col("Total").max().alias("max_score"))
 
     # create the actual scores.
-    logging.info("Abbreviating expansion names and performing data cleaning.")
+    logger.info("Abbreviating expansion names and performing data cleaning.")
     scores = (
         scores.join(max_score, on="Game")
         .with_columns(
