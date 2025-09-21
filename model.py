@@ -3,6 +3,7 @@ Model module for the application.
 """
 
 from pathlib import Path
+import warnings
 
 import arviz as az
 import jax
@@ -143,16 +144,24 @@ if __name__ == "__main__":
     numpyro.set_platform("cpu")
     numpyro.set_host_device_count(4)
 
-    processed_data = (
-        Path(__file__).parent.resolve() / "data" / "processed" / "processed_scores.csv"
-    )
     try:
-        processed_data = pl.read_csv(processed_data)
-    except FileNotFoundError:
-        raise FileNotFoundError(
-            "Processed data not found, please run `python data/process.py` first."
+        processed_data = (
+            Path(__file__).parent.resolve()
+            / "data"
+            / "processed"
+            / "processed_scores.csv"
         )
+        (result_dir := Path(__file__).parent.resolve() / "data" / "results").mkdir(
+            parents=True, exist_ok=True
+        )
+    except (FileNotFoundError, NameError):
+        # for interactive mode
+        processed_data = (
+            Path().resolve() / "data" / "processed" / "processed_scores.csv"
+        )
+        result_dir = Path().resolve() / "data" / "results"
 
+    processed_data = pl.read_csv(processed_data)
     fit_data = preprocessor.fit_transform(processed_data)
 
     # use the default NUTS parameters. It worked fine, but you can tune it
@@ -168,6 +177,12 @@ if __name__ == "__main__":
     # fails. However, use jnp for the count data, since that shape is static.
     expansion_labels, players = np.array(fit_data[:, :2].T, dtype=jnp.int32)
     points = fit_data[:, 2:]
+
+    try:
+        model_graph = numpyro.render_model(model, (expansion_labels, players, points))
+        model_graph.render(result_dir / "figures" / "wingspan_model", format="png")
+    except Exception as e:
+        warnings.warn(f"Could not render model graph: {e}")
 
     # Run the actual model and save the results as a NetCDF file, since the
     # trace has arrays of varying shapes due to the hierarchical structure.
