@@ -6,6 +6,7 @@ import arviz as az
 from pathlib import Path
 from matplotlib import pyplot as plt
 
+# Set to true to see the figures pop up as they are generated.
 show_figures = False
 
 
@@ -20,7 +21,7 @@ trace = az.from_netcdf(result_file)
 
 # This will happen a few times, but we simply have to rearrange the dimensions
 # such that the things we want to compare are next to each other.
-trace.posterior["points_total"] = trace.posterior["points_total"].transpose(
+trace.posterior["points_total"] = trace.posterior["points_total"].transpose(  # type: ignore
     "draw", "chain", "expansions", "players"
 )
 
@@ -40,7 +41,7 @@ plt.savefig(figure_dir / "total_points_for_camille_and_matt.png")
 if show_figures:
     plt.show()
 
-trace.posterior["theta"] = trace.posterior["theta"].transpose(
+trace.posterior["theta"] = trace.posterior["theta"].transpose(  # type: ignore
     "draw", "chain", "players", "point_categories", "expansions"
 )
 
@@ -107,7 +108,7 @@ if show_figures:
 
 # Does Matt rely on card tucking more than Camille, in either raw points
 # or proportionally?
-trace.posterior["theta"] = trace.posterior["theta"].transpose(
+trace.posterior["theta"] = trace.posterior["theta"].transpose(  # type: ignore
     "draw", "chain", "expansions", "point_categories", "players"
 )
 total_proportional_dist = az.plot_forest(
