@@ -163,7 +163,7 @@ if __name__ == "__main__":
     key = jax.random.key(481)
 
     # actually important we don't use jnp here, since that will screw
-    # up the model fitting (jnp arrays have this "tracer" behavior) that means
+    # up the model fitting. jnp arrays have "tracer" behavior that means
     # the shape needs to be known at runtime/compile time otherwise the program
     # fails. However, use jnp for the count data, since that shape is static.
     expansion_labels, players = np.array(fit_data[:, :2].T, dtype=jnp.int32)
