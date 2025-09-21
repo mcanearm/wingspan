@@ -115,7 +115,7 @@ def model(expansions, players, counts):
             point_lambda = numpyro.sample(
                 "points_total", dist.Normal(point_mean, point_sigma)
             )
-            theta = numpyro.sample("phi_exp", dist.Dirichlet(conc))
+            theta = numpyro.sample("theta", dist.Dirichlet(conc))
             numpyro.deterministic("points_category", theta * point_lambda[:, :, None])  # type: ignore
 
     point_eps = numpyro.sample("point_eps", dist.HalfNormal(5.0))
@@ -188,7 +188,7 @@ if __name__ == "__main__":
         dims={
             "phi": ["point_categories"],
             "point_totals": ["point_categories"],
-            "phi_exp": ["players", "expansions", "point_categories"],
+            "theta": ["players", "expansions", "point_categories"],
             "points_total": ["players", "expansions"],
             "points_category": ["players", "expansions", "point_categories"],
         },
