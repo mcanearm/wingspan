@@ -147,9 +147,8 @@ if __name__ == "__main__":
     to our data.
     """
 
-    # assume a 4 core machine for now. Maybe not the best, but... come on.
-    # Smart fridges have at least 4 cores. And you don't need a GPU.
-    logger.debug("Setting numpyro to use 4 CPUs with")
+    # assume a 4 core machine for now. You don't need a GPU, but if you want
+    # to use one, this is where you would set it up.
     numpyro.set_platform("cpu")
     numpyro.set_host_device_count(4)
 
