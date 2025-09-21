@@ -1,0 +1,130 @@
+"""
+Generate some plots for anlaysis and so answer some key questions.
+"""
+
+import arviz as az
+from pathlib import Path
+from matplotlib import pyplot as plt
+
+show_figures = False
+
+
+try:
+    cwd = Path(__file__).parent.resolve()
+except NameError:
+    cwd = Path().resolve()  # when running in an interactive environment
+result_file = cwd / "data" / "results" / "model_posterior.nc"
+(figure_dir := cwd / "data" / "results" / "figures").mkdir(parents=True, exist_ok=True)
+
+trace = az.from_netcdf(result_file)
+
+# This will happen a few times, but we simply have to rearrange the dimensions
+# such that the things we want to compare are next to each other.
+trace.posterior["points_total"] = trace.posterior["points_total"].transpose(
+    "draw", "chain", "expansions", "players"
+)
+
+# Key Questions: Between Camille and I, who scores more points, and over what
+# expansions?
+az.plot_forest(
+    trace,
+    var_names=["points_total"],
+    combined=True,
+    hdi_prob=0.95,
+    figsize=(8, 6),
+    kind="forestplot",
+    coords={"players": ["Matt", "Camille"]},
+)
+plt.tight_layout()
+plt.savefig(figure_dir / "total_points_for_camille_and_matt.png")
+if show_figures:
+    plt.show()
+
+trace.posterior["theta"] = trace.posterior["theta"].transpose(
+    "draw", "chain", "players", "point_categories", "expansions"
+)
+
+# Are strategies noticeably different across expansions, considering all players?
+az.plot_forest(
+    trace,
+    var_names=["theta"],
+    combined=True,
+    combine_dims={"players"},
+    hdi_prob=0.95,
+    figsize=(8, 6),
+    kind="forestplot",
+    coords={
+        "point_categories": [
+            "Birds",
+            "Eggs",
+            "Bonus Cards",
+            "End of Round Goals",
+            "Food on Cards",
+            "Tucked Cards",
+            "Duet Tokens",
+            "Nectar",
+        ],
+    },
+)
+plt.xlabel("$\\theta$")
+plt.ylabel("Point Category")
+plt.tight_layout()
+plt.savefig(figure_dir / "strategy_by_expansion.png")
+if show_figures:
+    plt.show()
+
+
+# Are strategies noticeably different across expansions, considering just Camille and myself??
+az.plot_forest(
+    trace,
+    var_names=["theta"],
+    combined=True,
+    combine_dims={"players"},
+    hdi_prob=0.95,
+    figsize=(8, 6),
+    kind="forestplot",
+    coords={
+        "point_categories": [
+            "Birds",
+            "Eggs",
+            "Bonus Cards",
+            "End of Round Goals",
+            "Food on Cards",
+            "Tucked Cards",
+            "Duet Tokens",
+            "Nectar",
+        ],
+        "players": ["Matt", "Camille"],
+    },
+)
+plt.xlabel("$\\theta$")
+plt.ylabel("Point Category")
+plt.tight_layout()
+plt.savefig(figure_dir / "strategy_by_expansion_matt_and_camille.png")
+if show_figures:
+    plt.show()
+
+
+# Does Matt rely on card tucking more than Camille, in either raw points
+# or proportionally?
+trace.posterior["theta"] = trace.posterior["theta"].transpose(
+    "draw", "chain", "expansions", "point_categories", "players"
+)
+total_proportional_dist = az.plot_forest(
+    trace,
+    var_names=["theta"],
+    coords={
+        "players": ["Matt", "Camille"],
+        "point_categories": ["Tucked Cards"],
+    },
+    figsize=(8, 6),
+    combined=True,
+    hdi_prob=0.95,
+)
+plt.xlabel("$\\theta$")
+plt.ylabel("Expansion,Player")
+plt.title("Proportional Points from Tucked Cards HDI")
+plt.tight_layout()
+plt.savefig(figure_dir / "tucked_cards_dist.png")
+if show_figures:
+    plt.show()
