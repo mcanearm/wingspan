@@ -2,9 +2,16 @@
 Generate some plots for anlaysis and so answer some key questions.
 """
 
-import arviz as az
+import logging
+import os
 from pathlib import Path
+
+import arviz as az
 from matplotlib import pyplot as plt
+
+logLevel = os.environ.get("LOGLEVEL", "WARNING").upper()
+logging.basicConfig(level=logLevel)
+logger = logging.getLogger(__name__)
 
 # Set to true to see the figures pop up as they are generated.
 show_figures = False
@@ -19,7 +26,11 @@ result_file = cwd / "data" / "results" / "model_posterior.nc"
 
 
 # spit out the basic diagnostic trace plots for a high level diagnostic
+logger.info("Reading model trace.")
 trace = az.from_netcdf(result_file)
+
+logger.info("Generating plots for analysis...")
+logger.debug("Geenerating trace plot.")
 az.plot_trace(trace)
 plt.tight_layout()
 plt.savefig(figure_dir / "trace_plots.png")
@@ -34,6 +45,7 @@ trace.posterior["points_total"] = trace.posterior["points_total"].transpose(  # 
 
 # Key Questions: Between Camille and I, who scores more points, and over what
 # expansions?
+logger.debug("Generating total points comparison plot.")
 az.plot_forest(
     trace,
     var_names=["points_total"],
@@ -53,6 +65,7 @@ trace.posterior["theta"] = trace.posterior["theta"].transpose(  # type: ignore
 )
 
 # Are strategies noticeably different across expansions, considering all players?
+logger.debug("Generating strategy comparison by expansion plot.")
 az.plot_forest(
     trace,
     var_names=["theta"],
@@ -83,6 +96,7 @@ if show_figures:
 
 
 # Are strategies noticeably different across expansions, considering just Camille and myself??
+logger.debug("Generating strategy comparison by expansion for Matt and Camille plot.")
 az.plot_forest(
     trace,
     var_names=["theta"],
@@ -115,6 +129,7 @@ if show_figures:
 
 # Does Matt rely on card tucking more than Camille, in either raw points
 # or proportionally?
+logger.debug("Generating tucked cards distribution plot for Matt and Camille plot.")
 trace.posterior["theta"] = trace.posterior["theta"].transpose(  # type: ignore
     "draw", "chain", "expansions", "point_categories", "players"
 )
