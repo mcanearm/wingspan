@@ -5,8 +5,15 @@ Realistically, polars is already set up for this sort of "chaining"  of operatio
 so it doesn't need to split up too much into separate functions.
 """
 
+import logging
 import polars as pl
 from pathlib import Path
+import os
+
+
+logLevel = os.environ.get("LOGLEVEL", "INFO").upper()
+logging.basicConfig(level=logLevel)
+logger = logging.getLogger(__name__)
 
 
 def input_csv_validation(df: pl.DataFrame) -> bool:
@@ -14,6 +21,7 @@ def input_csv_validation(df: pl.DataFrame) -> bool:
     Validate the input CSV data to ensure it contains the expected columns.
     """
     # use a set here, because by convention, we're NEVER going to refer to the order. And no duplicates!
+    logger.info("Validating input CSV columns.")
 
     expected_columns = {
         "Game",
@@ -37,6 +45,8 @@ if __name__ == "__main__":
         Path(__file__).parent.parent / "data"
     )  # assume here that the raw data is present in data
     score_file = data_dir / "raw" / "scores.csv"
+
+    logging.info(f"Reading raw score data from {score_file}")
     scores = pl.read_csv(score_file)
 
     assert input_csv_validation(scores), (
@@ -47,6 +57,7 @@ if __name__ == "__main__":
     max_score = scores.group_by("Game").agg(pl.col("Total").max().alias("max_score"))
 
     # create the actual scores.
+    logger.info("Abbreviating expansion names and performing data cleaning.")
     scores = (
         scores.join(max_score, on="Game")
         .with_columns(
@@ -65,7 +76,6 @@ if __name__ == "__main__":
             .alias("Expansions"),
         )
         .select(pl.exclude("max_score"))
-        # Normalize the scores as a percentage of the point total
         .with_columns(
             (
                 (pl.col(col) / pl.col("Total")).alias(
@@ -84,4 +94,5 @@ if __name__ == "__main__":
         )
     )
     (processed_dir := data_dir / "processed").mkdir(parents=True, exist_ok=True)
+    logger.info(f"Writing processed data to {processed_dir / 'processed_scores.csv'}")
     scores.write_csv(processed_dir / "processed_scores.csv")

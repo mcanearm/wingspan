@@ -2,8 +2,10 @@
 Model module for the application.
 """
 
+import os
 from pathlib import Path
 import warnings
+import logging
 
 import arviz as az
 import jax
@@ -16,6 +18,12 @@ from numpyro.infer import MCMC, NUTS
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import FunctionTransformer, Pipeline
 from sklearn.preprocessing import OrdinalEncoder
+
+
+logLevel = os.environ.get("LOGLEVEL", "INFO").upper()
+logging.basicConfig(level=logLevel)
+logger = logging.getLogger(__name__)
+
 
 # Data preprocessing pipeline for the model. The main goal is to convert
 # categorical variables to ordinal ones; otherwise, we're leaving everything alone.
@@ -141,9 +149,11 @@ if __name__ == "__main__":
 
     # assume a 4 core machine for now. Maybe not the best, but... come on.
     # Smart fridges have at least 4 cores. And you don't need a GPU.
+    logger.debug("Setting numpyro to use 4 CPUs with")
     numpyro.set_platform("cpu")
     numpyro.set_host_device_count(4)
 
+    logger.info("Loading data from processed/processed_scores.csv")
     try:
         processed_data = (
             Path(__file__).parent.resolve()
@@ -156,12 +166,16 @@ if __name__ == "__main__":
         )
     except (FileNotFoundError, NameError):
         # for interactive mode
+        logger.warning(
+            "Could not determine filepath, attempting to use current working directory."
+        )
         processed_data = (
             Path().resolve() / "data" / "processed" / "processed_scores.csv"
         )
         result_dir = Path().resolve() / "data" / "results"
-
     processed_data = pl.read_csv(processed_data)
+
+    logger.info("Transforming data.")
     fit_data = preprocessor.fit_transform(processed_data)
 
     # use the default NUTS parameters. It worked fine, but you can tune it
@@ -186,6 +200,7 @@ if __name__ == "__main__":
 
     # Run the actual model and save the results as a NetCDF file, since the
     # trace has arrays of varying shapes due to the hierarchical structure.
+    logger.info("Fitting MCMC model...")
     mcmc.run(key, expansions=expansion_labels, players=players, counts=points)
 
     expansion_labels, player_names = data_transformer.transformers_[0][1].categories_
@@ -193,6 +208,8 @@ if __name__ == "__main__":
         cat.replace("pass__", "")
         for cat in data_transformer.get_feature_names_out()[2:]
     ]
+
+    logger.debug("Reading trace into ArviZ InferenceData object.")
     trace = az.from_numpyro(
         mcmc,
         coords={
@@ -208,8 +225,12 @@ if __name__ == "__main__":
             "points_category": ["players", "expansions", "point_categories"],
         },
     )
+
     (result_dir := Path(__file__).parent.resolve() / "data" / "results").mkdir(
         parents=True, exist_ok=True
     )
 
-    az.to_netcdf(trace, result_dir / "model_posterior.nc")
+    logger.info(
+        f"Writing model trace to NetCDF at {(result_file := result_dir / 'model_posterior.nc')}."
+    )
+    az.to_netcdf(trace, result_file)
