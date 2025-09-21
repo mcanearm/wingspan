@@ -14,20 +14,23 @@ import numpyro
 # save time.
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def input_data():
     return pd.read_csv("./data/raw/scores.csv")
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def preprocessed_data(input_data):
     # fixture to preprocess the input data once for all tests in this module.
     transformed_data = preprocessor.fit_transform(input_data)
     return transformed_data
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def mcmc(preprocessed_data):
+    """
+    Fixture to actually run the model, when necessary.
+    """
     numpyro.set_platform("cpu")
     numpyro.set_host_device_count(4)
 
@@ -47,4 +50,4 @@ def mcmc(preprocessed_data):
         players=players,
         counts=counts,
     )
-    return mcmc
+    yield mcmc

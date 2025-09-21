@@ -17,7 +17,14 @@ except NameError:
 result_file = cwd / "data" / "results" / "model_posterior.nc"
 (figure_dir := cwd / "data" / "results" / "figures").mkdir(parents=True, exist_ok=True)
 
+
+# spit out the basic diagnostic trace plots for a high level diagnostic
 trace = az.from_netcdf(result_file)
+az.plot_trace(trace)
+plt.tight_layout()
+plt.savefig(figure_dir / "trace_plots.png")
+if show_figures:
+    plt.show()
 
 # This will happen a few times, but we simply have to rearrange the dimensions
 # such that the things we want to compare are next to each other.
