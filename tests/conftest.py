@@ -8,6 +8,12 @@ from model import preprocessor, model
 import numpyro
 
 
+# The use of fixtures makes this slower, but ensures that we aren't changing
+# the data from test to test. In addition, we utilize the MCMC in a single file,
+# so tests on data processing and model fitting can be reun independently to
+# save time.
+
+
 @pytest.fixture
 def input_data():
     return pd.read_csv("./data/raw/scores.csv")
@@ -23,7 +29,7 @@ def preprocessed_data(input_data):
 @pytest.fixture
 def mcmc(preprocessed_data):
     numpyro.set_platform("cpu")
-    numpyro.set_host_device_count(2)
+    numpyro.set_host_device_count(4)
 
     kernel = NUTS(model)
     # this makes the tests slow, but ensures that the model gives you valid
