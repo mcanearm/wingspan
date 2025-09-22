@@ -210,3 +210,6 @@ data/processed/*
 data/results/*
 launch.json
 *.nc # NetCDF files
+*.pdf
+*.html
+writeup_files/*
