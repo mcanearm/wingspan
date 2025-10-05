@@ -213,3 +213,4 @@ launch.json
 *.pdf
 *.html
 writeup_files/*
+.DS_Store
